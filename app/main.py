@@ -12,6 +12,7 @@ Routes:
 from __future__ import annotations
 
 import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
@@ -33,7 +34,14 @@ structlog.configure(
 log = structlog.get_logger(__name__)
 
 
-app = FastAPI(title="home-dashboard", version="0.1.0")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Close shared upstream clients on app teardown."""
+    yield
+    await aggregator.close()
+
+
+app = FastAPI(title="home-dashboard", version="0.1.0", lifespan=lifespan)
 
 
 STATIC_DIR = Path(__file__).parent / "static"
@@ -71,6 +79,19 @@ async def api_health() -> dict[str, Any]:
 # ─── Kill / pause endpoints ───────────────────────────────────────────
 
 
+def _kill_response(result: kill_switch.KillResult) -> dict[str, Any]:
+    """Serialise a KillResult into the JSON response shape."""
+    body: dict[str, Any] = {
+        "ok": result.ok,
+        "ts": result.ts,
+        "actions": [a.__dict__ for a in result.actions],
+        "log_id": result.log_id,
+    }
+    if result.error:
+        body["error"] = result.error
+    return body
+
+
 @app.post("/api/kill/all")
 async def api_kill_all(
     x_confirm: str = Header("", alias="X-Confirm"),
@@ -81,12 +102,7 @@ async def api_kill_all(
             detail=f"X-Confirm header required (expected '{kill_switch.confirm_token_for('all')}')",
         )
     result = await kill_switch.kill_all(dry_run=False)
-    return {
-        "ok": result.ok,
-        "ts": result.ts,
-        "actions": [a.__dict__ for a in result.actions],
-        "log_id": result.log_id,
-    }
+    return _kill_response(result)
 
 
 @app.post("/api/kill/{strategy}")
@@ -100,12 +116,7 @@ async def api_kill_strategy(
             detail=f"X-Confirm header required (expected '{kill_switch.confirm_token_for(strategy)}')",
         )
     result = await kill_switch.kill_strategy(strategy, dry_run=False)
-    return {
-        "ok": result.ok,
-        "ts": result.ts,
-        "actions": [a.__dict__ for a in result.actions],
-        "log_id": result.log_id,
-    }
+    return _kill_response(result)
 
 
 @app.post("/api/pause/{strategy}")
@@ -119,12 +130,7 @@ async def api_pause_strategy(
             detail=f"X-Confirm header required (expected '{kill_switch.confirm_token_for(strategy)}')",
         )
     result = await kill_switch.pause_strategy(strategy, dry_run=False)
-    return {
-        "ok": result.ok,
-        "ts": result.ts,
-        "actions": [a.__dict__ for a in result.actions],
-        "log_id": result.log_id,
-    }
+    return _kill_response(result)
 
 
 # ─── SSE activity feed ────────────────────────────────────────────────
@@ -132,9 +138,10 @@ async def api_pause_strategy(
 
 @app.get("/api/stream")
 async def api_stream() -> StreamingResponse:
-    """Phase 1: mock stream (one event every 5s)."""
+    """Real Redis pub/sub stream; falls back to mock if Redis is down."""
+    redis = await aggregator._get_redis()
     return StreamingResponse(
-        sse.mock_stream(),
+        sse.activity_stream(redis),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
