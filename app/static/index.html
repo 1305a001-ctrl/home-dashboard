@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trading Console · home</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500;600&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/dashboard.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" integrity="sha512-+EoN04mY/8B3srYpD0iEeu5z6cTYLOC0YQ8eDTSL2P6/AKqL7+S0XwGdLnk/4dwIaUw2Z6yQyIVdfFzbn3JzfQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+</head>
+<body>
+
+<!-- ═══════════════ Header ═══════════════ -->
+<div class="op-header">
+  <div class="op-title-block">
+    <div class="tag">Operator Console · v1</div>
+    <h1>Trading <span class="acc">book</span></h1>
+    <div class="sub">Polymarket compound engine and Aave/Morpho/Fluid liquidation bot — running on the 24-container stack. All paper-mode until 4-flag gate clears.</div>
+  </div>
+  <div class="op-header-meta">
+    <div class="op-mm"><div class="l">Mode</div><div class="v live" data-bind="meta.mode">paper · armed</div></div>
+    <div class="op-mm"><div class="l">Containers</div><div class="v" data-bind="system.containers.label" data-format="text">— / —</div></div>
+    <div class="op-mm"><div class="l">Local time</div><div class="v" data-bind="meta.local_time">—</div></div>
+  </div>
+</div>
+
+<!-- ═══════════════ KPI hero ═══════════════ -->
+<div class="op-hero">
+  <div class="op-kpi feat">
+    <div class="l">Working capital</div>
+    <div class="v" data-bind="capital.working_capital_usd" data-format="usd">$0.00</div>
+    <div class="delta">
+      <span class="up" data-bind="capital.pnl_24h_usd" data-format="usd-signed">$0.00</span>
+      today · across <span data-bind="strategies[0].open_positions" data-format="int">0</span> open positions
+    </div>
+    <svg class="spark" width="120" height="36" viewBox="0 0 120 36">
+      <path d="M 0,28 L 12,26 L 24,30 L 36,22 L 48,24 L 60,18 L 72,20 L 84,12 L 96,14 L 108,8 L 120,10"
+            fill="none" stroke="#ff7847" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="120" cy="10" r="3" fill="#ff7847"/>
+    </svg>
+  </div>
+  <div class="op-kpi">
+    <div class="l">All-time P&amp;L</div>
+    <div class="v" data-bind="capital.pnl_alltime_usd" data-format="usd-colored">$0.00</div>
+    <div class="delta">since seed</div>
+  </div>
+  <div class="op-kpi">
+    <div class="l">7-day P&amp;L</div>
+    <div class="v" data-bind="capital.pnl_7d_usd" data-format="usd-colored">$0.00</div>
+    <div class="delta">rolling window</div>
+  </div>
+  <div class="op-kpi">
+    <div class="l">Win rate</div>
+    <div class="v" data-bind="trades.win_rate" data-format="pct">0.0%</div>
+    <div class="delta">
+      <span data-bind="trades.total" data-format="int">0</span> trades ·
+      <span data-bind="trades.wins" data-format="int">0</span> W /
+      <span data-bind="trades.losses" data-format="int">0</span> L
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ Main two-column ═══════════════ -->
+<div class="op-main">
+
+  <!-- LEFT: strategies + chart -->
+  <div class="op-strategies">
+
+    <!-- Polymarket card -->
+    <div class="op-strat poly">
+      <div class="top">
+        <div class="name">
+          <h3>Polymarket Compound</h3>
+          <span class="tag paper" data-bind="strategies[0].status_tag">PAPER</span>
+        </div>
+        <div class="controls">
+          <button class="pause-btn" data-action="pause" data-strategy="polymarket">Pause</button>
+          <button class="kill-btn" data-action="halt" data-strategy="polymarket">⏹ Halt</button>
+        </div>
+      </div>
+      <div class="body">
+        <div class="stat">
+          <div class="l">Capital</div>
+          <div class="v" data-bind="strategies[0].capital_usd" data-format="usd0">$0</div>
+          <div class="sub"><span data-bind="strategies[0].pct_of_book" data-format="pct">0%</span> of book</div>
+        </div>
+        <div class="stat">
+          <div class="l">Open / Closed today</div>
+          <div class="v">
+            <span data-bind="strategies[0].open_positions" data-format="int">0</span> /
+            <span data-bind="strategies[0].closed_today" data-format="int">0</span>
+          </div>
+          <div class="sub">paper-mode</div>
+        </div>
+        <div class="stat">
+          <div class="l">24h P&amp;L</div>
+          <div class="v up" data-bind="strategies[0].pnl_24h_usd" data-format="usd-signed">$0.00</div>
+          <div class="sub" data-bind="strategies[0].pnl_24h_pct" data-format="pct-on-capital">—</div>
+        </div>
+        <div class="stat">
+          <div class="l">Win rate · 24h</div>
+          <div class="v" data-bind="strategies[0].win_rate_24h" data-format="pct">0%</div>
+          <div class="sub">
+            <span data-bind="strategies[0].wins_24h" data-format="int">0</span> W /
+            <span data-bind="strategies[0].losses_24h" data-format="int">0</span> L
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="wr-track">
+          <div class="wr-w" data-bind="strategies[0].win_rate_24h" data-format="width-pct"></div>
+          <div class="wr-l" data-bind="strategies[0].win_rate_24h" data-format="width-inv-pct"></div>
+        </div>
+        <div class="wr-stats">
+          <span class="w"><span data-bind="strategies[0].wins_24h" data-format="int">0</span> wins · <span data-bind="strategies[0].win_rate_24h" data-format="pct">0%</span></span>
+          <span class="l"><span data-bind="strategies[0].losses_24h" data-format="int">0</span> losses · <span data-bind="strategies[0].loss_rate_24h" data-format="pct">0%</span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Liquidation card -->
+    <div class="op-strat liq">
+      <div class="top">
+        <div class="name">
+          <h3>Liquidation Bot</h3>
+          <span class="tag paper" data-bind="strategies[1].gate_label">GATED</span>
+        </div>
+        <div class="controls">
+          <button class="pause-btn" data-action="pause" data-strategy="liquidation">Pause</button>
+          <button class="kill-btn" data-action="halt" data-strategy="liquidation">⏹ Halt</button>
+        </div>
+      </div>
+      <div class="body">
+        <div class="stat">
+          <div class="l">Gas budget</div>
+          <div class="v" data-bind="strategies[1].capital_usd" data-format="usd0">$0</div>
+          <div class="sub">Arbitrum + Base</div>
+        </div>
+        <div class="stat">
+          <div class="l">Evaluations / 24h</div>
+          <div class="v" data-bind="strategies[1].evaluations_24h" data-format="int">0</div>
+          <div class="sub">across protocols</div>
+        </div>
+        <div class="stat">
+          <div class="l">Detected liquidatable</div>
+          <div class="v up" data-bind="strategies[1].detected_liquidatable_24h" data-format="int">0</div>
+          <div class="sub">
+            would-execute: <span data-bind="strategies[1].would_execute_24h" data-format="int">0</span>
+          </div>
+        </div>
+        <div class="stat">
+          <div class="l">Actual executed</div>
+          <div class="v" data-bind="strategies[1].actually_executed_24h" data-format="int">0</div>
+          <div class="sub">LIVE_ENABLED=false</div>
+        </div>
+      </div>
+      <!-- 4-flag gate -->
+      <div class="gate-card">
+        <div class="gate-label">4-FLAG GATE · <span data-bind="strategies[1].gate.cleared">1</span> / <span data-bind="strategies[1].gate.total">4</span> CLEARED</div>
+        <div class="gate-grid" data-bind-list="strategies[1].gate.flags" data-bind-template="gate-flag"></div>
+        <template id="tmpl-gate-flag">
+          <div class="gate-flag {{status}}">
+            <div class="status">{{statusLabel}}</div>
+            <div class="name">{{name}}</div>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <!-- P&L chart -->
+    <div class="op-chart">
+      <div class="top">
+        <h3>Cumulative P&amp;L</h3>
+        <div class="ranges" id="chart-ranges">
+          <span data-range="1H">1H</span>
+          <span data-range="4H">4H</span>
+          <span data-range="24H">24H</span>
+          <span data-range="7D">7D</span>
+          <span data-range="30D" class="act">30D</span>
+          <span data-range="ALL">ALL</span>
+        </div>
+      </div>
+      <canvas id="pnl-chart" height="240"></canvas>
+    </div>
+  </div>
+
+  <!-- RIGHT: side -->
+  <div class="op-side">
+
+    <div class="op-recs">
+      <h3>Recommended now</h3>
+      <div data-bind-list="recommendations" data-bind-template="rec"></div>
+      <template id="tmpl-rec">
+        <div class="op-rec">
+          <div class="pri">{{priority}}</div>
+          <div class="body">
+            <strong>{{title}}</strong> {{body}}
+            <div class="action">→ {{action_label}}</div>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <div class="op-positions">
+      <h3>Open positions <span class="count">
+        <span data-bind="positions.length" data-format="int">0</span> ·
+        <span data-bind="capital.open_notional_usd" data-format="usd0">$0</span>
+      </span></h3>
+      <div data-bind-list="positions" data-bind-template="pos"></div>
+      <template id="tmpl-pos">
+        <div class="op-pos">
+          <div class="name">
+            <span class="src {{source}}">{{sourceLabel}}</span>{{market}}
+            <div class="meta">{{side}} · ${{size_usd_fmt}} · {{age_label}}</div>
+          </div>
+          <div class="pnl {{pnlDirection}}">
+            {{pnl_usd_fmt}}<span class="pct">{{pnl_pct_fmt}}</span>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <!-- Activity feed -->
+    <div class="op-activity">
+      <h3>Activity feed</h3>
+      <div id="activity-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ System health strip ═══════════════ -->
+<div class="op-sys">
+  <div class="op-sys-card">
+    <div class="ic"><div class="pip" data-bind="system.cl_streams.ok" data-format="pip"></div></div>
+    <div class="body"><div class="l">CL Streams</div><div class="v">
+      <span data-bind="system.cl_streams.active" data-format="int">0</span> /
+      <span data-bind="system.cl_streams.total" data-format="int">0</span> live
+    </div></div>
+  </div>
+  <div class="op-sys-card">
+    <div class="ic"><div class="pip" data-bind="system.pyth_hermes.ok" data-format="pip"></div></div>
+    <div class="body"><div class="l">Pyth Hermes</div><div class="v">
+      <span data-bind="system.pyth_hermes.active" data-format="int">0</span> /
+      <span data-bind="system.pyth_hermes.total" data-format="int">0</span>
+    </div></div>
+  </div>
+  <div class="op-sys-card">
+    <div class="ic"><div class="pip" data-bind="system.containers.ok" data-format="pip"></div></div>
+    <div class="body"><div class="l">Containers</div><div class="v">
+      <span data-bind="system.containers.active" data-format="int">0</span> /
+      <span data-bind="system.containers.total" data-format="int">0</span>
+    </div></div>
+  </div>
+  <div class="op-sys-card">
+    <div class="ic"><div class="pip" data-bind="system.ocde.ok" data-format="pip"></div></div>
+    <div class="body"><div class="l">OCDE :8014</div><div class="v" data-bind="system.ocde.label">—</div></div>
+  </div>
+  <div class="op-sys-card">
+    <div class="ic"><div class="pip" data-bind="system.subgraph.ok" data-format="pip"></div></div>
+    <div class="body"><div class="l">Subgraph</div><div class="v" data-bind="system.subgraph.label">—</div></div>
+  </div>
+</div>
+
+<!-- ═══════════════ Master kill ═══════════════ -->
+<div class="op-master-kill">
+  <div class="info">
+    <div class="l">⚠ Master kill</div>
+    <div class="h">Halt all strategies, cancel all open positions, flatten book</div>
+    <div class="sub">Requires confirmation · idempotent · logs to audit trail · resumable from paper mode</div>
+  </div>
+  <button class="btn" id="master-kill-btn">⏹ HALT ALL</button>
+</div>
+
+<!-- ═══════════════ Confirm modal ═══════════════ -->
+<div id="modal-backdrop" class="modal-backdrop hidden">
+  <div class="modal">
+    <h3 id="modal-title">Confirm action</h3>
+    <p id="modal-body">Are you sure?</p>
+    <div class="modal-actions">
+      <button id="modal-cancel" class="btn-secondary">Cancel</button>
+      <button id="modal-confirm" class="btn-danger">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/dashboard.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,40 @@
+# home-dashboard compose stanza — merge into ai-primary's main compose stack.
+# Tailscale-only: binds to the Tailscale interface on ai-primary, not 0.0.0.0.
+#
+# Deploy:
+#   ssh ai-primary 'mkdir -p /srv/compose/home-dashboard && mkdir -p /var/log/home-dashboard'
+#   scp docker/docker-compose.snippet.yml ai-primary:/srv/compose/home-dashboard/docker-compose.yml
+#   ssh ai-primary 'cd /srv/compose/home-dashboard && sudo docker compose pull && sudo docker compose up -d'
+
+services:
+  home-dashboard:
+    image: ghcr.io/1305a001-ctrl/home-dashboard:latest
+    container_name: home-dashboard
+    restart: unless-stopped
+    networks:
+      - aicore_net   # match the existing trading-stack network
+    ports:
+      # Bind to Tailscale interface only — replace with ai-primary's
+      # Tailscale IPv4 when deploying (typically 100.x.y.z). For now we
+      # bind to 0.0.0.0 inside the docker network; the host firewall
+      # restricts external access to Tailscale.
+      - "8090:8090"
+    environment:
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - POSTGRES_DSN=postgresql://benadmin:${POSTGRES_PASSWORD}@postgres:5432/aicore
+      - OCDE_URL=http://ocde:8014
+      - OMS_GATEWAY_URL=http://oms-gateway:8003
+      - STRATEGY_RUNNERS_URL=http://strategy-runners:8006
+      - LIQUIDATION_BOT_URL=http://liquidation-bot:8011
+      - LOG_LEVEL=INFO
+    volumes:
+      - /var/log/home-dashboard:/var/log/home-dashboard
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; r=httpx.get('http://localhost:8090/api/health',timeout=3); exit(0 if r.status_code==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+networks:
+  aicore_net:
+    external: true
