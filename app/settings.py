@@ -28,15 +28,16 @@ class Settings(BaseSettings):
     reserved_gas_usd: float = 200.0
 
     # Oracle freshness — which Redis keys we ping for system health.
+    # Sync these with what the upstream feeders actually publish; otherwise
+    # the dashboard reports false negatives (e.g. wbtc/wsteth never streamed).
     cl_assets: list[str] = [
-        "btc", "eth", "wsteth", "cbeth", "usdc", "usdt", "wbtc",
+        "btc", "eth", "sol", "bnb", "xrp", "doge", "hype",
     ]
     pyth_assets: list[str] = [
-        # 31 assets; truncated default — production env overrides.
-        "btc", "eth", "sol", "matic", "avax", "doge", "bnb", "ada",
-        "xrp", "dot", "ltc", "uni", "link", "atom", "near", "ftm",
-        "op", "arb", "sui", "apt", "inj", "ondo", "rndr", "tia",
-        "sei", "wld", "hype", "pyth", "jto", "wif", "bonk",
+        "aave", "ada", "apt", "arb", "atom", "avax", "bnb", "btc",
+        "cbeth", "doge", "dot", "eth", "hype", "inj", "link", "ltc",
+        "near", "op", "pepe", "pol", "shib", "sol", "sui", "tia",
+        "ton", "trx", "uni", "usdc", "usdt", "wsteth", "xrp",
     ]
 
     # SSE

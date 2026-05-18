@@ -188,7 +188,7 @@ async def _fetch_capital_and_trades(pool: asyncpg.Pool | None) -> dict | None:
             cap_row = await conn.fetchrow(
                 """
                 SELECT
-                    COALESCE(SUM(size_usd) FILTER (WHERE status='open'), 0)::float
+                    COALESCE(SUM(qty * avg_entry_price) FILTER (WHERE status='open'), 0)::float
                         AS open_notional_usd,
                     COALESCE(SUM(realized_pnl_usd)
                         FILTER (WHERE closed_at > NOW() - INTERVAL '1 day'), 0)::float
@@ -301,7 +301,7 @@ async def _build_polymarket_card(pool: asyncpg.Pool) -> dict | None:
                 SELECT
                     COUNT(*) FILTER (WHERE status='open')             AS open_positions,
                     COUNT(*) FILTER (WHERE closed_at > NOW() - INTERVAL '1 day') AS closed_today,
-                    COALESCE(SUM(size_usd) FILTER (WHERE status='open'), 0)::float
+                    COALESCE(SUM(qty * avg_entry_price) FILTER (WHERE status='open'), 0)::float
                                                                       AS capital_usd,
                     COALESCE(SUM(realized_pnl_usd)
                         FILTER (WHERE closed_at > NOW() - INTERVAL '1 day'), 0)::float
@@ -315,7 +315,7 @@ async def _build_polymarket_card(pool: asyncpg.Pool) -> dict | None:
                 """
             )
             total_open_row = await conn.fetchrow(
-                "SELECT COALESCE(SUM(size_usd), 0)::float AS total FROM positions WHERE status='open'"
+                "SELECT COALESCE(SUM(qty * avg_entry_price), 0)::float AS total FROM positions WHERE status='open'"
             )
     except Exception as e:
         log.warning("aggregator.polymarket_card.query_failed err=%s", e)
@@ -426,9 +426,9 @@ async def _fetch_positions(pool: asyncpg.Pool | None) -> list[dict] | None:
                     venue                                             AS source,
                     asset,
                     side,
-                    entry_price,
+                    avg_entry_price AS entry_price,
                     mark_price,
-                    size_usd,
+                    qty * avg_entry_price AS size_usd,
                     COALESCE(realized_pnl_usd, 0) + COALESCE(unrealized_pnl_usd, 0)
                                                                       AS pnl_usd,
                     EXTRACT(EPOCH FROM NOW() - created_at)            AS age_seconds
@@ -484,7 +484,9 @@ async def _fetch_system_health(
         # docker socket bind is complex — placeholder until v2.
         "containers": {"ok": True, "active": 24, "total": 24},
         "ocde": ocde or {"ok": False, "endpoint": ":8014", "label": "unreachable"},
-        "subgraph": {"ok": False, "label": "pending"},
+        "subgraph": await _http_health(
+            http, settings.liquidation_bot_url + "/health", label="healthy"
+        ) or {"ok": False, "endpoint": ":8011", "label": "unreachable"},
         "oms_gateway": oms or {"ok": False, "label": "unreachable"},
         "latency_p99_ms": 218,
     }
